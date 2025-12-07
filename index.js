@@ -38,17 +38,35 @@ async function run() {
         })
 
         app.get('/products', async (req, res) => {
-            const cursor = productsCollection.find()
+            const { limit = 0, skip = 0 } = req.query
+            const cursor = productsCollection.find().limit(Number(limit)).skip(Number(skip))
             const result = await cursor.project({ productDescription: 0, demoVideoLink: 0 }).toArray()
             res.send(result)
         })
 
         app.get('/products/:id', async (req, res) => {
-            const id = req.params.id
-            const query = { _id: id }
-            const result = await productsCollection.findOne(query)
-            res.send(result)
-        })
+            const id = req.params.id;
+
+            let result = null;
+
+            if (ObjectId.isValid(id)) {
+                result = await productsCollection.findOne({ _id: new ObjectId(id) });
+            }
+
+            if (!result) {
+                result = await productsCollection.findOne({ _id: id });
+            }
+
+            res.send(result);
+        });
+
+
+        app.get("/productsCount", async (req, res) => {
+            const count = await productsCollection.estimatedDocumentCount();
+            res.send({ count });
+        });
+
+
 
         // Users Apis 
 
