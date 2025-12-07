@@ -25,25 +25,43 @@ async function run() {
 
         const db = client.db('thread-ops')
         const productsCollection = db.collection('products')
+        const usersCollection = db.collection('users')
 
-        app.get('/topProducts', async(req, res)=>{
-            const query = {showOnHomePage: true}
+        // Products APIs 
+
+        app.get('/topProducts', async (req, res) => {
+            const query = { showOnHomePage: true }
 
             const cursor = productsCollection.find(query)
-            const result =  await cursor.toArray()
-            res.send(result)
-        })
-
-        app.get('/products', async(req, res)=>{
-            const cursor = productsCollection.find()
             const result = await cursor.toArray()
             res.send(result)
         })
 
-        app.get('/products/:id', async(req, res)=>{
+        app.get('/products', async (req, res) => {
+            const cursor = productsCollection.find()
+            const result = await cursor.project({ productDescription: 0, demoVideoLink: 0 }).toArray()
+            res.send(result)
+        })
+
+        app.get('/products/:id', async (req, res) => {
             const id = req.params.id
-            const query = {_id: id}
+            const query = { _id: id }
             const result = await productsCollection.findOne(query)
+            res.send(result)
+        })
+
+        // Users Apis 
+
+        app.post('/users', async (req, res) => {
+            const user = req.body
+            const query = { email: user.email }
+            const existingUser = await usersCollection.findOne(query)
+
+            if (existingUser) {
+                return res.send({ message: "User already exists", insertedId: null });
+            }
+
+            const result = await usersCollection.insertOne(user);
             res.send(result)
         })
 
