@@ -7,6 +7,8 @@ const port = process.env.PORT || 5000
 app.use(cors())
 app.use(express.json())
 
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
+
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.eqwoetz.mongodb.net/?appName=Cluster0`;
 
@@ -70,10 +72,10 @@ async function run() {
 
         // Users Apis 
 
-        app.get('/users', async(req, res)=>{
+        app.get('/users', async (req, res) => {
             const email = req.query.email
             const query = {}
-            if (email){
+            if (email) {
                 query.email = email
                 const result = await usersCollection.findOne(query)
                 res.send(result)
@@ -95,6 +97,40 @@ async function run() {
 
             const result = await usersCollection.insertOne(user);
             res.send(result)
+        })
+
+        // Payment related APIs 
+
+        app.post('/create-checkout-session', async (req, res) => {
+            const paymentInfo = req.body;
+            const quantity = parseInt(paymentInfo.quantity)
+            const amount = paymentInfo.productPrice * 100
+
+            const session = await stripe.checkout.sessions.create({
+                line_items: [
+                    {
+                        price_data: {
+                            currency: 'usd',
+                            unit_amount:  amount,
+                            product_data: {
+                                name: paymentInfo.productTitle
+                            }
+                        },
+                        quantity: quantity
+                    },
+                ],
+                customer_email: paymentInfo?.buyerEmail,
+                mode: 'payment',
+                metadata: {
+                    productId: paymentInfo.productId
+                },
+                success_url: `${process.env.SITE_DOMAIN}/paymen-succes`,
+                cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`,
+            })
+            
+            res.send({url: session.url});
+            
+            
         })
 
 
