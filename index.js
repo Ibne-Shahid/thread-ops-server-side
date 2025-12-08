@@ -28,6 +28,8 @@ async function run() {
         const db = client.db('thread-ops')
         const productsCollection = db.collection('products')
         const usersCollection = db.collection('users')
+        const ordersCollection = db.collection('orders')
+
 
         // Products APIs 
 
@@ -99,6 +101,43 @@ async function run() {
             res.send(result)
         })
 
+        // Orders related APIs 
+
+        app.post('/orders', async (req, res) => {
+            const order = req.body
+            order.paymentStatus = 'Pending'
+            order.transactionId = null
+            order.tracingId = null
+            order.orderDate = new Date()
+
+            const result = await ordersCollection.insertOne(order)
+
+            res.send({ insertedId: result.insertedId })
+        })
+
+        app.delete('/orders/:id', async (req, res) => {
+            const orderId = req.params.id;
+
+            try {
+                const result = await ordersCollection.deleteOne({
+                    _id: new ObjectId(orderId),
+                    paymentStatus: "Pending",
+                    paymentMethod: "Stripe"
+                });
+
+                if (result.deletedCount > 0) {
+                    return res.send({ success: true, message: "Pending order deleted" });
+                }
+
+                res.send({ success: false, message: "Order not found or cannot delete" });
+            } catch (err) {
+                console.error(err);
+                res.status(500).send({ success: false, message: "Server error" });
+            }
+        });
+
+
+
         // Payment related APIs 
 
         app.post('/create-checkout-session', async (req, res) => {
@@ -122,10 +161,11 @@ async function run() {
                 customer_email: paymentInfo?.buyerEmail,
                 mode: 'payment',
                 metadata: {
-                    productId: paymentInfo.productId
+                    productId: paymentInfo.productId,
+                    orderId: paymentInfo.orderId
                 },
                 success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-                cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled?session_id={CHECKOUT_SESSION_ID}`,
+                cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled?session_id={CHECKOUT_SESSION_ID}&orderId=${paymentInfo.orderId}`,
 
             })
 
@@ -133,6 +173,31 @@ async function run() {
 
 
         })
+
+        app.get('/verify-payment', async (req, res) => {
+            const sessionId = req.query.session_id;
+
+            const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+            const orderId = session.metadata.orderId;
+
+            if (session.payment_status === "paid") {
+                await ordersCollection.updateOne(
+                    { _id: new ObjectId(orderId) },
+                    {
+                        $set: {
+                            paymentStatus: "Paid",
+                            transactionId: session.payment_intent
+                        }
+                    }
+                );
+
+                return res.send({ success: true });
+            }
+
+            res.send({ success: false });
+        });
+
 
 
         await client.db("admin").command({ ping: 1 });
