@@ -111,7 +111,7 @@ async function run() {
                     {
                         price_data: {
                             currency: 'usd',
-                            unit_amount:  amount,
+                            unit_amount: amount,
                             product_data: {
                                 name: paymentInfo.productTitle
                             }
@@ -124,13 +124,14 @@ async function run() {
                 metadata: {
                     productId: paymentInfo.productId
                 },
-                success_url: `${process.env.SITE_DOMAIN}/paymen-succes`,
-                cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`,
+                success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+                cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled?session_id={CHECKOUT_SESSION_ID}`,
+
             })
-            
-            res.send({url: session.url});
-            
-            
+
+            res.send({ url: session.url });
+
+
         })
 
 
