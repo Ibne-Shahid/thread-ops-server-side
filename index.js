@@ -41,6 +41,24 @@ async function run() {
             res.send(result)
         })
 
+        app.patch('/products/:id/showOnHome', async (req, res) => {
+            const id = req.params.id
+            const { showOnHomePage } = req.body
+            const query = {
+                $or: [
+                    { _id: id },                 
+                    { _id: new ObjectId(id) }    
+                ]
+            };
+            const updatedDoc = {
+                $set: {
+                    showOnHomePage
+                }
+            }
+            const result = await productsCollection.updateOne(query, updatedDoc)
+            res.send(result)
+        })
+
         app.get('/products', async (req, res) => {
             const { limit = 0, skip = 0 } = req.query
             const cursor = productsCollection.find().limit(Number(limit)).skip(Number(skip))
@@ -101,9 +119,9 @@ async function run() {
             res.send(result)
         })
 
-        app.patch('/users/:id', async (req, res)=>{
+        app.patch('/users/:id', async (req, res) => {
             const id = req.params.id
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const updateDoc = {
                 $set: {
                     status: "approved",
@@ -115,9 +133,9 @@ async function run() {
             res.send(result)
         })
 
-        app.patch('/users/:id/role', async (req, res)=>{
+        app.patch('/users/:id/role', async (req, res) => {
             const id = req.params.id
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const updateDoc = {
                 $set: {
                     role: "admin",
@@ -130,11 +148,11 @@ async function run() {
 
         // Orders related APIs 
 
-        app.get('/orders', async (req, res)=>{
+        app.get('/orders', async (req, res) => {
 
             const email = req.query.email
             const query = {}
-            if(email){
+            if (email) {
                 query.buyerEmail = email
             }
             const curson = ordersCollection.find(query)
