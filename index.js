@@ -104,14 +104,27 @@ async function run() {
         app.patch('/users/:id', async (req, res)=>{
             const id = req.params.id
             const query = {_id: new ObjectId(id)}
-            const updateDock = {
+            const updateDoc = {
                 $set: {
                     status: "approved",
                     updatedAt: new Date()
                 }
             }
 
-            const result = await usersCollection.updateOne(query, updateDock)
+            const result = await usersCollection.updateOne(query, updateDoc)
+            res.send(result)
+        })
+
+        app.patch('/users/:id/role', async (req, res)=>{
+            const id = req.params.id
+            const query = {_id: new ObjectId(id)}
+            const updateDoc = {
+                $set: {
+                    role: "admin",
+                    updatedAt: new Date()
+                }
+            }
+            const result = await usersCollection.updateOne(query, updateDoc)
             res.send(result)
         })
 
