@@ -103,9 +103,21 @@ async function run() {
 
         // Orders related APIs 
 
+        app.get('/orders', async (req, res)=>{
+            const email = req.query.email
+            const query = {}
+            if(email){
+                query.buyerEmail = email
+            }
+            const curson = ordersCollection.find(query)
+            const result = await curson.toArray()
+            res.send(result)
+        })
+
         app.post('/orders', async (req, res) => {
             const order = req.body
             order.paymentStatus = 'Pending'
+            order.status = 'Pending'
             order.transactionId = null
             order.tracingId = null
             order.orderDate = new Date()
