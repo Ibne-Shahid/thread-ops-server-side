@@ -101,9 +101,24 @@ async function run() {
             res.send(result)
         })
 
+        app.patch('/users/:id', async (req, res)=>{
+            const id = req.params.id
+            const query = {_id: new ObjectId(id)}
+            const updateDock = {
+                $set: {
+                    status: "approved",
+                    updatedAt: new Date()
+                }
+            }
+
+            const result = await usersCollection.updateOne(query, updateDock)
+            res.send(result)
+        })
+
         // Orders related APIs 
 
         app.get('/orders', async (req, res)=>{
+
             const email = req.query.email
             const query = {}
             if(email){
