@@ -41,13 +41,46 @@ async function run() {
             res.send(result)
         })
 
+        app.patch('/products/:id', async (req, res) => {
+            const id = req.params.id
+            const updatedProduct = req.body
+
+            if (!updatedProduct) {
+                return res.status(400).send({ message: "Invalid product data" });
+            }
+            const { productName, category, price, availableQuantity, minimumOrderQuantity, paymentOption, images } = updatedProduct
+
+            const query = {
+                $or: [
+                    { _id: id },
+                    { _id: new ObjectId(id) }
+                ]
+            }
+
+            const updatedDoc = {
+                $set: {
+                    productName,
+                    category,
+                    price,
+                    availableQuantity,
+                    minimumOrderQuantity,
+                    paymentOption,
+                    images: images || [],
+                    updatedAt: new Date()
+                }
+            }
+
+            const result = await productsCollection.updateOne(query, updatedDoc)
+            res.send(result)
+        })
+
         app.patch('/products/:id/showOnHome', async (req, res) => {
             const id = req.params.id
             const { showOnHomePage } = req.body
             const query = {
                 $or: [
-                    { _id: id },                 
-                    { _id: new ObjectId(id) }    
+                    { _id: id },
+                    { _id: new ObjectId(id) }
                 ]
             };
             const updatedDoc = {
