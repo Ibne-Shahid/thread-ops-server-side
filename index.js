@@ -58,7 +58,7 @@ async function run() {
             if (!updatedProduct) {
                 return res.status(400).send({ message: "Invalid product data" });
             }
-            const { productName, category, price, availableQuantity, minimumOrderQuantity, paymentOption, images } = updatedProduct
+            const { productName, category, price, productDescription, demoVideoLink, availableQuantity, minimumOrderQuantity, paymentOption, images } = updatedProduct
 
             const query = {
                 $or: [
@@ -75,6 +75,8 @@ async function run() {
                     availableQuantity,
                     minimumOrderQuantity,
                     paymentOption,
+                    productDescription,
+                    demoVideoLink,
                     images: images || [],
                     updatedAt: new Date()
                 }
@@ -103,9 +105,13 @@ async function run() {
         })
 
         app.get('/products', async (req, res) => {
-            const { limit = 0, skip = 0 } = req.query
-            const cursor = productsCollection.find().limit(Number(limit)).skip(Number(skip))
-            const result = await cursor.project({ productDescription: 0, demoVideoLink: 0 }).toArray()
+            const { limit = 0, skip = 0, email } = req.query
+            const query = {}
+            if (email){
+                query.sellerEmail= email
+            }
+            const cursor = productsCollection.find(query).limit(Number(limit)).skip(Number(skip))
+            const result = await cursor.toArray()
             res.send(result)
         })
 
