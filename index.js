@@ -212,6 +212,10 @@ async function run() {
             order.transactionId = null
             order.tracingId = null
             order.orderDate = new Date()
+            order.trackingHistory = [{
+                entryDate: order.orderDate,
+                orderStatus: "Order Placed"
+            }]
 
             const result = await ordersCollection.insertOne(order)
 
