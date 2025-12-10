@@ -41,6 +41,16 @@ async function run() {
             res.send(result)
         })
 
+        app.post('/products', async (req, res)=>{
+            const newProduct = req.body
+            newProduct.showOnHomePage = false
+
+            const result = await productsCollection.insertOne(newProduct)
+
+            res.send({ insertedId: result.insertedId })
+            
+        })
+
         app.patch('/products/:id', async (req, res) => {
             const id = req.params.id
             const updatedProduct = req.body
