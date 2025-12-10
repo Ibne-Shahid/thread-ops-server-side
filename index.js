@@ -116,10 +116,22 @@ async function run() {
         });
 
 
-        app.get("/productsCount", async (req, res) => {
+        app.get('/productsCount', async (req, res) => {
             const count = await productsCollection.estimatedDocumentCount();
             res.send({ count });
         });
+
+        app.delete('/products/:id', async (req, res)=>{
+            const id = req.params.id
+            const query = {
+                $or: [
+                    {_id: id},
+                    {_id: new ObjectId(id)}
+                ]
+            }
+            const result = await productsCollection.deleteOne(query)
+            res.send(result)
+        })
 
 
 
