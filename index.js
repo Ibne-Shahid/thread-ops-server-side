@@ -205,6 +205,13 @@ async function run() {
             res.send(result)
         })
 
+        app.get('/orders/:orderId', async (req, res)=>{
+            const id = req.params.orderId
+            const query = {_id: new ObjectId(id)}
+            const result = await ordersCollection.findOne(query)
+            res.send(result)
+        })
+
         app.post('/orders', async (req, res) => {
             const order = req.body
             order.paymentStatus = 'Pending'
