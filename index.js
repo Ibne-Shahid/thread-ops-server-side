@@ -493,7 +493,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get('/', (req, res) => {
-    res.send('ThreadOps server is running.')
+    res.send('ThreadOps server is running and runnig.')
 })
 
 app.listen(port, () => {
