@@ -239,7 +239,7 @@ async function run() {
             order.paymentStatus = 'Pending'
             order.status = 'Pending'
             order.transactionId = null
-            order.tracingId = null
+            order.trackingId = null
             order.orderDate = new Date()
             order.trackingHistory = [{
                 entryDate: order.orderDate,
