@@ -4,8 +4,37 @@ require('dotenv').config()
 const app = express()
 const port = process.env.PORT || 5000
 
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./thread-ops-firebase-adminsdk-fbsvc-da426993cd.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
 app.use(cors())
 app.use(express.json())
+
+const verifyFBToken = async (req, res, next) => {
+    console.log('headers', req.headers?.authorization);
+
+    const token = req.headers?.authorization
+
+    if (!token) {
+        return res.status(401).send({ message: 'unauthorized access!' })
+    }
+
+    try {
+        const idToken = token.split(' ')[1]
+        const decoded = await admin.auth().verifyIdToken(idToken)
+        console.log(decoded);
+        req.decoded_email = decoded?.email
+        next()
+
+    } catch (err) {
+        return res.status(401).send({ message: 'unauthorized access!' })
+    }
+}
 
 const { v4: uuidv4 } = require('uuid')
 
@@ -43,9 +72,10 @@ async function run() {
             res.send(result)
         })
 
-        app.post('/products', async (req, res) => {
+        app.post('/products', verifyFBToken, async (req, res) => {
             const newProduct = req.body
             newProduct.showOnHomePage = false
+            newProduct.sellerEmail = req.decoded_email
 
             const result = await productsCollection.insertOne(newProduct)
 
@@ -53,13 +83,24 @@ async function run() {
 
         })
 
-        app.patch('/products/:id', async (req, res) => {
+        app.patch('/products/:id', verifyFBToken, async (req, res) => {
             const id = req.params.id
             const updatedProduct = req.body
+
+            const product = await productsCollection.findOne({
+                $or: [{ _id: id }, { _id: new ObjectId(id) }]
+            })
 
             if (!updatedProduct) {
                 return res.status(400).send({ message: "Invalid product data" });
             }
+
+            const user = await usersCollection.findOne({ email: req.decoded_email })
+
+            if (product?.sellerEmail !== req.decoded_email && user?.role !== 'admin') {
+                return res.status(403).send({ message: 'Forbidden: You can only update your own products' });
+            }
+
             const { productName, category, price, productDescription, demoVideoLink, availableQuantity, minimumOrderQuantity, paymentOption, images } = updatedProduct
 
             const query = {
@@ -139,8 +180,22 @@ async function run() {
             res.send({ count });
         });
 
-        app.delete('/products/:id', async (req, res) => {
+        app.delete('/products/:id', verifyFBToken, async (req, res) => {
             const id = req.params.id
+
+            const product = await productsCollection.findOne({
+                $or: [{ _id: id }, { _id: new ObjectId(id) }]
+            })
+
+            if (!product) {
+                return res.status(404).send({ message: "Product not found" });
+            }
+
+            const user = await usersCollection.findOne({ email: req.decoded_email });
+            if (product.sellerEmail !== req.decoded_email && user?.role !== 'admin') {
+                return res.status(403).send({ message: 'Forbidden: You can only delete your own products' });
+            }
+
             const query = {
                 $or: [
                     { _id: id },
@@ -155,13 +210,19 @@ async function run() {
 
         // Users Apis 
 
-        app.get('/users', async (req, res) => {
+        app.get('/users', verifyFBToken, async (req, res) => {
+            const user = await usersCollection.findOne({ email: req.decoded_email })
+            if (user?.role !== 'admin') {
+                const currentUser = await usersCollection.findOne({ email: req.decoded_email });
+                return res.send(currentUser);
+            }
             const email = req.query.email
             const query = {}
             if (email) {
                 query.email = email
                 const result = await usersCollection.findOne(query)
-                res.send(result)
+
+                return res.send(result)
             }
             const cursor = usersCollection.find()
             const result = await cursor.toArray()
@@ -183,7 +244,13 @@ async function run() {
             res.send(result)
         })
 
-        app.patch('/users/:id', async (req, res) => {
+        app.patch('/users/:id', verifyFBToken, async (req, res) => {
+            const user = await usersCollection.findOne({ email: req.decoded_email });
+
+            if (user?.role !== 'admin') {
+                return res.status(403).send({ message: 'Forbidden: Only admin can approve users' });
+            }
+
             const id = req.params.id
             const query = { _id: new ObjectId(id) }
             const updateDoc = {
@@ -197,7 +264,13 @@ async function run() {
             res.send(result)
         })
 
-        app.patch('/users/:id/role', async (req, res) => {
+        app.patch('/users/:id/role', verifyFBToken, async (req, res) => {
+            const adminUser = await usersCollection.findOne({ email: req.decoded_email });
+
+            if (adminUser?.role !== 'admin') {
+                return res.status(403).send({ message: 'Forbidden: Only admin can change user roles' });
+            }
+            
             const id = req.params.id
             const query = { _id: new ObjectId(id) }
             const updateDoc = {
@@ -213,13 +286,16 @@ async function run() {
 
         // Orders related APIs 
 
-        app.get('/orders', async (req, res) => {
+        app.get('/orders', verifyFBToken, async (req, res) => {
 
             const sellerEmail = req.query.sellerEmail
             const email = req.query.email
             const query = {}
             if (email) {
                 query.buyerEmail = email
+                if (email !== req?.decoded_email) {
+                    return res.status(403).send({ message: 'forbidden access!' })
+                }
             }
             if (sellerEmail) {
                 query.sellerEmail = sellerEmail
