@@ -171,6 +171,7 @@ async function run() {
 
         app.post('/users', async (req, res) => {
             const user = req.body
+            user.joinDate = new Date()
             const query = { email: user.email }
             const existingUser = await usersCollection.findOne(query)
 
@@ -202,6 +203,7 @@ async function run() {
             const updateDoc = {
                 $set: {
                     role: "admin",
+                    status: "approved",
                     updatedAt: new Date()
                 }
             }
@@ -307,6 +309,18 @@ async function run() {
             const result = await ordersCollection.updateOne(query, updatedDoc)
             res.send(result)
 
+        })
+
+        app.delete('/orders/:id/my-order', async (req, res) => {
+            const orderId = req.params.id
+            const query = { _id: new ObjectId(orderId) }
+            const result = await ordersCollection.deleteOne(query)
+
+            if (result.deletedCount > 0) {
+                return res.send({ success: true, message: "Pending order deleted" });
+            }
+
+            res.send({ success: false, message: "Order not found or cannot delete" });
         })
 
         app.delete('/orders/:id', async (req, res) => {
