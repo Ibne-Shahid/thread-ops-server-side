@@ -253,12 +253,12 @@ async function run() {
 
         app.patch('/orders/:id', async (req, res) => {
             const id = req.params.id
-            const { status } = req.body
+            const { status, location, note } = req.body
 
             const query = { _id: new ObjectId(id) }
 
             const generateTrackingId = () => {
-                const trackingBase = uuidv4().split('-')[0];  
+                const trackingBase = uuidv4().split('-')[0];
                 return `TDO-${trackingBase.toUpperCase()}`;
             }
 
@@ -267,8 +267,27 @@ async function run() {
                 orderStatus: status
             }
 
+            if (status !== "Pending" || status !== "Approved" || status !== "Rejected" || status !== "Delivered") {
+                const newTrackingEntry = {
+                    entryDate: new Date(),
+                    orderStatus: status,
+                    location,
+                    note
+                }
+
+                const updatedDoc = {
+                    $push: { trackingHistory: newTrackingEntry },
+                    $set: {
+                        updatedAt: new Date()
+                    }
+                }
+                const result = await ordersCollection.updateOne(query, updatedDoc)
+                
+                return res.send(result)
+            }
+
             const updatedDoc = {
-                $push: {trackingHistory: newTrackingEntry},
+                $push: { trackingHistory: newTrackingEntry },
                 $set: {
                     status,
                     updatedAt: new Date(),
