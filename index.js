@@ -26,7 +26,7 @@ const verifyFBToken = async (req, res, next) => {
     try {
         const idToken = token.split(' ')[1]
         const decoded = await admin.auth().verifyIdToken(idToken)
-        
+
         req.decoded_email = decoded?.email
         next()
 
@@ -81,6 +81,7 @@ async function run() {
             res.send({ insertedId: result.insertedId })
 
         })
+
 
         app.patch('/products/:id', verifyFBToken, async (req, res) => {
             const id = req.params.id
@@ -347,7 +348,6 @@ async function run() {
             }
 
             if (status === "Delivered") {
-
                 const updatedDoc = {
                     $push: { trackingHistory: newTrackingEntry },
                     $set: {
@@ -359,19 +359,79 @@ async function run() {
                 return res.send(result);
             }
 
-            if (status === "Approved" || status === "Rejected") {
+            if (status === "Approved") {
+                const order = await ordersCollection.findOne(query);
+
+                if (!order) {
+                    return res.status(404).send({ message: 'Order not found' });
+                }
+
+                const productQuery = {
+                    $or: [
+                        { _id: order.productId },
+                        { _id: new ObjectId(order.productId) }
+                    ]
+                };
+
+                const product = await productsCollection.findOne(productQuery);
+
+                if (!product) {
+                    return res.status(404).send({ message: 'Product not found' });
+                }
+
+                const orderQuantity = parseInt(order.quantity);
+                const currentAvailableQuantity = parseInt(product.availableQuantity);
+
+                if (currentAvailableQuantity < orderQuantity) {
+                    return res.status(400).send({
+                        message: `Insufficient stock. Available: ${currentAvailableQuantity}, Ordered: ${orderQuantity}`
+                    });
+                }
+
+                const newAvailableQuantity = currentAvailableQuantity - orderQuantity;
+
+                const productUpdateResult = await productsCollection.updateOne(
+                    productQuery,
+                    {
+                        $set: {
+                            availableQuantity: newAvailableQuantity,
+                            updatedAt: new Date()
+                        }
+                    }
+                );
+
+                const orderUpdatedDoc = {
+                    $push: { trackingHistory: newTrackingEntry },
+                    $set: {
+                        status: status,
+                        updatedAt: new Date(),
+                        trackingId: generateTrackingId()
+                    }
+                };
+
+                const orderUpdateResult = await ordersCollection.updateOne(
+                    query,
+                    orderUpdatedDoc
+                );
+
+                res.send({
+                    ...orderUpdateResult,
+                    productUpdated: productUpdateResult.modifiedCount > 0
+                });
+            }
+
+            if (status === "Rejected") {
                 const updatedDoc = {
                     $push: { trackingHistory: newTrackingEntry },
                     $set: {
                         status: status,
                         updatedAt: new Date(),
-                        trackingId: status === "Approved" ? generateTrackingId() : null
+                        trackingId: null
                     }
-                }
+                };
 
-                const result = await ordersCollection.updateOne(query, updatedDoc)
-
-                return res.send(result)
+                const result = await ordersCollection.updateOne(query, updatedDoc);
+                return res.send(result);
             }
 
             const updatedDoc = {
@@ -379,12 +439,11 @@ async function run() {
                 $set: {
                     updatedAt: new Date()
                 }
-            }
+            };
 
-            const result = await ordersCollection.updateOne(query, updatedDoc)
-            res.send(result)
-
-        })
+            const result = await ordersCollection.updateOne(query, updatedDoc);
+            res.send(result);
+        });
 
         app.delete('/orders/:id/my-order', async (req, res) => {
             const orderId = req.params.id
