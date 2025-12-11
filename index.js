@@ -264,34 +264,43 @@ async function run() {
 
             const newTrackingEntry = {
                 entryDate: new Date(),
-                orderStatus: status
+                orderStatus: status,
+                location: location || "",
+                note: note || ""
             }
 
-            if (status !== "Pending" || status !== "Approved" || status !== "Rejected" || status !== "Delivered") {
-                const newTrackingEntry = {
-                    entryDate: new Date(),
-                    orderStatus: status,
-                    location,
-                    note
-                }
+            if (status === "Delivered") {
 
                 const updatedDoc = {
                     $push: { trackingHistory: newTrackingEntry },
                     $set: {
-                        updatedAt: new Date()
+                        status: status,
+                        updatedAt: new Date(),
+                    }
+                };
+                const result = await ordersCollection.updateOne(query, updatedDoc);
+                return res.send(result);
+            }
+
+            if (status === "Approved" || status === "Rejected") {
+                const updatedDoc = {
+                    $push: { trackingHistory: newTrackingEntry },
+                    $set: {
+                        status: status,
+                        updatedAt: new Date(),
+                        trackingId: status === "Approved" ? generateTrackingId() : null
                     }
                 }
+
                 const result = await ordersCollection.updateOne(query, updatedDoc)
-                
+
                 return res.send(result)
             }
 
             const updatedDoc = {
                 $push: { trackingHistory: newTrackingEntry },
                 $set: {
-                    status,
-                    updatedAt: new Date(),
-                    trackingId: status === "Approved" ? generateTrackingId() : null
+                    updatedAt: new Date()
                 }
             }
 
