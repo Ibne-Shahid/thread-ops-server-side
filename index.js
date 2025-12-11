@@ -16,7 +16,6 @@ app.use(cors())
 app.use(express.json())
 
 const verifyFBToken = async (req, res, next) => {
-    console.log('headers', req.headers?.authorization);
 
     const token = req.headers?.authorization
 
@@ -27,7 +26,7 @@ const verifyFBToken = async (req, res, next) => {
     try {
         const idToken = token.split(' ')[1]
         const decoded = await admin.auth().verifyIdToken(idToken)
-        console.log(decoded);
+        
         req.decoded_email = decoded?.email
         next()
 
@@ -270,7 +269,7 @@ async function run() {
             if (adminUser?.role !== 'admin') {
                 return res.status(403).send({ message: 'Forbidden: Only admin can change user roles' });
             }
-            
+
             const id = req.params.id
             const query = { _id: new ObjectId(id) }
             const updateDoc = {
