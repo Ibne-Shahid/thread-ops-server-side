@@ -7,6 +7,8 @@ const port = process.env.PORT || 5000
 app.use(cors())
 app.use(express.json())
 
+const { v4: uuidv4 } = require('uuid')
+
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -41,14 +43,14 @@ async function run() {
             res.send(result)
         })
 
-        app.post('/products', async (req, res)=>{
+        app.post('/products', async (req, res) => {
             const newProduct = req.body
             newProduct.showOnHomePage = false
 
             const result = await productsCollection.insertOne(newProduct)
 
             res.send({ insertedId: result.insertedId })
-            
+
         })
 
         app.patch('/products/:id', async (req, res) => {
@@ -107,8 +109,8 @@ async function run() {
         app.get('/products', async (req, res) => {
             const { limit = 0, skip = 0, email } = req.query
             const query = {}
-            if (email){
-                query.sellerEmail= email
+            if (email) {
+                query.sellerEmail = email
             }
             const cursor = productsCollection.find(query).limit(Number(limit)).skip(Number(skip))
             const result = await cursor.toArray()
@@ -137,12 +139,12 @@ async function run() {
             res.send({ count });
         });
 
-        app.delete('/products/:id', async (req, res)=>{
+        app.delete('/products/:id', async (req, res) => {
             const id = req.params.id
             const query = {
                 $or: [
-                    {_id: id},
-                    {_id: new ObjectId(id)}
+                    { _id: id },
+                    { _id: new ObjectId(id) }
                 ]
             }
             const result = await productsCollection.deleteOne(query)
@@ -211,19 +213,23 @@ async function run() {
 
         app.get('/orders', async (req, res) => {
 
+            const sellerEmail = req.query.sellerEmail
             const email = req.query.email
             const query = {}
             if (email) {
                 query.buyerEmail = email
+            }
+            if (sellerEmail) {
+                query.sellerEmail = sellerEmail
             }
             const curson = ordersCollection.find(query)
             const result = await curson.toArray()
             res.send(result)
         })
 
-        app.get('/orders/:orderId', async (req, res)=>{
+        app.get('/orders/:orderId', async (req, res) => {
             const id = req.params.orderId
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await ordersCollection.findOne(query)
             res.send(result)
         })
@@ -243,6 +249,36 @@ async function run() {
             const result = await ordersCollection.insertOne(order)
 
             res.send({ insertedId: result.insertedId })
+        })
+
+        app.patch('/orders/:id', async (req, res) => {
+            const id = req.params.id
+            const { status } = req.body
+
+            const query = { _id: new ObjectId(id) }
+
+            const generateTrackingId = () => {
+                const trackingBase = uuidv4().split('-')[0];  
+                return `TDO-${trackingBase.toUpperCase()}`;
+            }
+
+            const newTrackingEntry = {
+                entryDate: new Date(),
+                orderStatus: status
+            }
+
+            const updatedDoc = {
+                $push: {trackingHistory: newTrackingEntry},
+                $set: {
+                    status,
+                    updatedAt: new Date(),
+                    trackingId: status === "Approved" ? generateTrackingId() : null
+                }
+            }
+
+            const result = await ordersCollection.updateOne(query, updatedDoc)
+            res.send(result)
+
         })
 
         app.delete('/orders/:id', async (req, res) => {
