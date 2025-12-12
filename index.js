@@ -6,7 +6,12 @@ const port = process.env.PORT || 5000
 
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./thread-ops-firebase-adminsdk-fbsvc-da426993cd.json");
+// const serviceAccount = require("./thread-ops-firebase-adminsdk-fbsvc-da426993cd.json");
+
+// const serviceAccount = require("./firebase-admin-key.json");
+
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -561,8 +566,8 @@ async function run() {
 
 
 
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
 
         // await client.close();
@@ -575,5 +580,5 @@ app.get('/', (req, res) => {
 })
 
 app.listen(port, () => {
-    console.log(`TasteHouse server is running on port: ${port}`)
+    // console.log(`TasteHouse server is running on port: ${port}`)
 })
