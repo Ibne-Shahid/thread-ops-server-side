@@ -40,6 +40,7 @@ const { v4: uuidv4 } = require('uuid')
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { QueryDocumentSnapshot } = require('firebase-admin/firestore')
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.eqwoetz.mongodb.net/?appName=Cluster0`;
 
 const client = new MongoClient(uri, {
@@ -282,6 +283,24 @@ async function run() {
             }
             const result = await usersCollection.updateOne(query, updateDoc)
             res.send(result)
+        })
+
+        app.patch('/users/:id/suspension', async (req, res)=>{
+            const id = req.params.id
+            const {status, suspendReason} = req.body
+
+            const query = {_id: new ObjectId(id)}
+            const updatedDoc = {
+                $set: {
+                    status,
+                    suspendReason,
+                    updatedAt: new Date()
+                }
+            }
+
+            const result = await usersCollection.updateOne(query, updatedDoc)
+            res.send(result)
+            
         })
 
         // Orders related APIs 
