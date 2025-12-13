@@ -13,9 +13,12 @@ const admin = require("firebase-admin");
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
 const serviceAccount = JSON.parse(decoded);
 
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-});
+if (!admin.apps.length) {
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+    });
+}
+
 
 app.use(cors())
 app.use(express.json())
@@ -40,7 +43,12 @@ const verifyFBToken = async (req, res, next) => {
     }
 }
 
-const { v4: uuidv4 } = require('uuid')
+let uuidv4;
+(async () => {
+    const { v4 } = await import('uuid');
+    uuidv4 = v4;
+})();
+
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
@@ -59,7 +67,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
 
-        await client.connect();
+        // await client.connect();
 
         const db = client.db('thread-ops')
         const productsCollection = db.collection('products')
@@ -290,11 +298,11 @@ async function run() {
             res.send(result)
         })
 
-        app.patch('/users/:id/suspension', async (req, res)=>{
+        app.patch('/users/:id/suspension', async (req, res) => {
             const id = req.params.id
-            const {status, suspendReason} = req.body
+            const { status, suspendReason } = req.body
 
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const updatedDoc = {
                 $set: {
                     status,
@@ -305,7 +313,7 @@ async function run() {
 
             const result = await usersCollection.updateOne(query, updatedDoc)
             res.send(result)
-            
+
         })
 
         // Orders related APIs 
@@ -362,7 +370,8 @@ async function run() {
             const generateTrackingId = () => {
                 const trackingBase = uuidv4().split('-')[0];
                 return `TDO-${trackingBase.toUpperCase()}`;
-            }
+            };
+
 
             const newTrackingEntry = {
                 entryDate: new Date(),
@@ -580,5 +589,5 @@ app.get('/', (req, res) => {
 })
 
 app.listen(port, () => {
-    // console.log(`TasteHouse server is running on port: ${port}`)
+    console.log(`TasteHouse server is running on port: ${port}`)
 })
